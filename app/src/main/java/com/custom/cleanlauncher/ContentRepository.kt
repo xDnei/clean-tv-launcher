@@ -18,6 +18,12 @@ import java.net.URL
 import java.security.MessageDigest
 import kotlin.concurrent.thread
 
+data class StreamOption(
+    val title: String,
+    val providerName: String,
+    val actionIntent: Intent
+)
+
 data class MediaItem(
     val id: Int,
     val imdbId: String?,
@@ -215,41 +221,88 @@ class ContentRepository(private val context: Context) {
     }
 
     /**
-     * Abre diretamente a página de detalhes do filme/série no Stremio sem passar pela busca interna.
+     * Consulta em tempo real a API do TMDb para descobrir onde o filme/série está disponível no Brasil
+     * e busca o trailer oficial no YouTube.
      */
-    fun openMediaInStremioOrApp(profileId: String, item: MediaItem) {
-        if (item.id > 0) {
-            recordWatchedMediaForActiveProfile(profileId, item.id)
-        }
-        if (!item.deepLinkUri.isNullOrEmpty()) {
+    fun fetchAvailableStreamsAndTrailer(item: MediaItem, callback: (List<StreamOption>) -> Unit) {
+        val apiKey = prefs.getString("tmdb_api_key", "")?.trim() ?: ""
+        thread {
+            val options = mutableListOf<StreamOption>()
+            val typeStr = if (item.mediaType == "tv") "tv" else "movie"
+
+            // 1. Sempre adiciona a opção padrão do Stremio para reprodução direta
             try {
-                val intent = Intent.parseUri(item.deepLinkUri, Intent.URI_INTENT_SCHEME)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                return
-            } catch (_: Exception) {}
-        }
-        try {
-            // Formato de intent direto para o Stremio abrir a página do TMDb/IMDb sem tela de busca
-            val typeStr = if (item.mediaType == "tv") "series" else "movie"
-            val stremioUri = Uri.parse("stremio:///detail/$typeStr/tmdb:${item.id}")
-            val stremioIntent = Intent(Intent.ACTION_VIEW, stremioUri).apply {
-                setPackage("com.stremio.one")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(stremioIntent)
-        } catch (_: Exception) {
-            try {
-                // Fallback para URI genérica do Stremio
-                val fallbackUri = Uri.parse("stremio:///detail/movie/tmdb:${item.id}")
-                val fallbackIntent = Intent(Intent.ACTION_VIEW, fallbackUri).apply {
+                val stremioType = if (item.mediaType == "tv") "series" else "movie"
+                val stremioUri = Uri.parse("stremio:///detail/$stremioType/tmdb:${item.id}")
+                val stremioIntent = Intent(Intent.ACTION_VIEW, stremioUri).apply {
+                    setPackage("com.stremio.one")
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                context.startActivity(fallbackIntent)
-            } catch (_: Exception) {
-                val fallbackApp = context.packageManager.getLeanbackLaunchIntentForPackage("com.stremio.one")
-                fallbackApp?.let { context.startActivity(it) }
+                options.add(StreamOption("Assistir no Stremio", "Stremio (Reprodutor Principal)", stremioIntent))
+            } catch (_: Exception) {}
+
+            if (apiKey.isNotEmpty() && item.id > 0) {
+                // 2. Consulta provedores de streaming oficiais no Brasil (Watch/Providers) via TMDb API
+                try {
+                    val provUrl = URL("https://api.themoviedb.org/3/$typeStr/${item.id}/watch/providers?api_key=$apiKey")
+                    val conn = provUrl.openConnection() as HttpURLConnection
+                    conn.connectTimeout = 5000
+                    val res = conn.inputStream.bufferedReader().readText()
+                    val brObj = JSONObject(res).optJSONObject("results")?.optJSONObject("BR")
+
+                    fun parseProviders(arrayName: String, badgePrefix: String) {
+                        val arr = brObj?.optJSONArray(arrayName)
+                        if (arr != null) {
+                            for (i in 0 until arr.length()) {
+                                val p = arr.getJSONObject(i)
+                                val name = p.optString("provider_name", "Streaming")
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=assistir+${Uri.encode(item.title)}+no+$name")).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                options.add(StreamOption("$badgePrefix: $name", name, intent))
+                            }
+                        }
+                    }
+                    parseProviders("flatrate", "Streaming")
+                    parseProviders("rent", "Alugar")
+                    parseProviders("buy", "Comprar")
+                } catch (_: Exception) {}
+
+                // 3. Busca o trailer oficial no YouTube via TMDb Videos API
+                try {
+                    val vidUrl = URL("https://api.themoviedb.org/3/$typeStr/${item.id}/videos?api_key=$apiKey&language=pt-BR")
+                    val vConn = vidUrl.openConnection() as HttpURLConnection
+                    vConn.connectTimeout = 5000
+                    val vRes = vConn.inputStream.bufferedReader().readText()
+                    val vResults = JSONObject(vRes).optJSONArray("results")
+                    var youtubeKey = ""
+                    if (vResults != null) {
+                        for (i in 0 until vResults.length()) {
+                            val vObj = vResults.getJSONObject(i)
+                            if (vObj.optString("site") == "YouTube") {
+                                youtubeKey = vObj.optString("key")
+                                if (vObj.optString("type") == "Trailer") break
+                            }
+                        }
+                    }
+                    if (youtubeKey.isNotEmpty()) {
+                        val ytIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$youtubeKey")).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        options.add(StreamOption("▶ Ver Trailer Oficial", "YouTube (Grátis)", ytIntent))
+                    }
+                } catch (_: Exception) {}
             }
+
+            // Fallback de trailer caso a API não retorne chave
+            if (options.none { it.title.contains("Trailer") }) {
+                val ytFallback = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=${Uri.encode(item.title + " trailer oficial")}")).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                options.add(StreamOption("▶ Pesquisar Trailer", "YouTube", ytFallback))
+            }
+
+            callback(options)
         }
     }
 }

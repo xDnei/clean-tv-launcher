@@ -62,6 +62,85 @@ class ProfileAndSettingsManager(
         return (pct / 100f).coerceIn(0.80f, 1.35f)
     }
 
+    /**
+     * Pop-up cinematográfico com as opções de streaming disponíveis e trailers para o filme selecionado.
+     */
+    fun showMediaStreamsPopup(item: MediaItem, streams: List<StreamOption>, onDismissRestoreFocus: (() -> Unit)? = null) {
+        val palette = ThemeManager.getPalette(context)
+        val dialog = Dialog(context)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(UiUtils.dp(context, 36), UiUtils.dp(context, 28), UiUtils.dp(context, 36), UiUtils.dp(context, 32))
+            background = UiUtils.createAdaptiveDrawable(context, palette.bgDialog, palette.cardBorderNormal, 1.5f, 22f)
+            layoutParams = ViewGroup.LayoutParams(UiUtils.dp(context, 480), ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        val titleTv = TextView(context).apply {
+            text = item.title
+            textSize = 20f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(palette.textPrimary)
+            maxLines = 1
+        }
+        val overviewTv = TextView(context).apply {
+            text = item.overview.ifEmpty { "Nenhuma descrição disponível." }
+            textSize = 12.5f
+            setTextColor(palette.textSecondary)
+            maxLines = 3
+            setPadding(0, UiUtils.dp(context, 4), 0, UiUtils.dp(context, 16))
+        }
+
+        root.addView(titleTv)
+        root.addView(overviewTv)
+
+        val listScroll = ScrollView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiUtils.dp(context, 240))
+        }
+        val optionsCol = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        streams.forEach { opt ->
+            val optBtn = Button(context).apply {
+                text = opt.title
+                isAllCaps = false
+                textSize = 14f
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                setPadding(UiUtils.dp(context, 18), UiUtils.dp(context, 12), UiUtils.dp(context, 18), UiUtils.dp(context, 12))
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiUtils.dp(context, 48)).apply {
+                    bottomMargin = UiUtils.dp(context, 8)
+                }
+                UiUtils.attachSingleFocus(
+                    this,
+                    palette,
+                    cornerRadiusDp = 12f,
+                    scaleUp = 1.03f,
+                    normalFill = palette.cardSurface,
+                    focusedFill = palette.accentCyan
+                )
+                setOnClickListener {
+                    try {
+                        context.startActivity(opt.actionIntent)
+                        dialog.dismiss()
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Não foi possível abrir o aplicativo selecionado.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            optionsCol.addView(optBtn)
+        }
+        listScroll.addView(optionsCol)
+        root.addView(listScroll)
+
+        dialog.setContentView(root)
+        dialog.setOnDismissListener { onDismissRestoreFocus?.invoke() }
+        dialog.show()
+    }
+
     fun showProfileDropdownMenu(onDismissRestoreFocus: (() -> Unit)? = null) {
         val palette = ThemeManager.getPalette(context)
         val dialog = Dialog(context)

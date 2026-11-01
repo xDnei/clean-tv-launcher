@@ -131,8 +131,32 @@ class MainActivity : AppCompatActivity() {
         handler.postDelayed({ hideLoadingOverlaySmoothly() }, 1400)
     }
 
+    private fun handleMediaItemClick(item: MediaItem) {
+        if (item.id == -999) {
+            lastFocusedViewBeforeDialog = currentFocus
+            isDialogShowing = true
+            profileAndSettings.showLauncherSettingsDialog {
+                isDialogShowing = false
+                lastFocusedViewBeforeDialog?.requestFocus()
+            }
+            return
+        }
+
+        lastFocusedViewBeforeDialog = currentFocus
+        isDialogShowing = true
+
+        // Busca em segundo plano as opções de streaming e o trailer no TMDb/YouTube e exibe o pop-up
+        repository.fetchAvailableStreamsAndTrailer(item) { streams ->
+            runOnUiThread {
+                profileAndSettings.showMediaStreamsPopup(item, streams) {
+                    isDialogShowing = false
+                    lastFocusedViewBeforeDialog?.requestFocus()
+                }
+            }
+        }
+    }
+
     private fun setupScrollListenerForBackdropFade() {
-        // Conforme o utilizador desce na tela, a imagem de fundo do banner desvanece suavemente para a cor de fundo
         mainScrollView.setOnScrollChangeListener(NestedScrollView.OnScrollChangeListener { _, _, scrollY, _, _ ->
             val maxScroll = UiUtils.dp(this, 220).toFloat()
             val alpha = (1.0f - (scrollY / maxScroll)).coerceIn(0.0f, 1.0f)
@@ -234,17 +258,7 @@ class MainActivity : AppCompatActivity() {
 
         heroBannerFocusArea.setOnClickListener {
             val activeItem = carouselItems.getOrNull(currentCarouselIndex) ?: return@setOnClickListener
-            if (activeItem.id == -999) {
-                lastFocusedViewBeforeDialog = currentFocus
-                isDialogShowing = true
-                profileAndSettings.showLauncherSettingsDialog {
-                    isDialogShowing = false
-                    lastFocusedViewBeforeDialog?.requestFocus()
-                }
-            } else {
-                val prof = profileAndSettings.getActiveProfile()
-                repository.openMediaInStremioOrApp(prof.id, activeItem)
-            }
+            handleMediaItemClick(activeItem)
         }
     }
 
@@ -363,8 +377,8 @@ class MainActivity : AppCompatActivity() {
         val continueItems = repository.getContinueWatchingList(profile.id)
         if (prefs.getBoolean("show_continue_watching", true) && continueItems.isNotEmpty()) {
             sectionContinueWatching.visibility = View.VISIBLE
-            rvContinueWatching.adapter = MediaPosterAdapter(continueItems, posterScale, palette) {
-                repository.openMediaInStremioOrApp(profile.id, it)
+            rvContinueWatching.adapter = MediaPosterAdapter(continueItems, posterScale, palette) { item ->
+                handleMediaItemClick(item)
             }
         } else {
             sectionContinueWatching.visibility = View.GONE
@@ -374,8 +388,8 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 if (items.isNotEmpty()) {
                     sectionRecommendations.visibility = View.VISIBLE
-                    rvRecommendations.adapter = MediaPosterAdapter(items, posterScale, palette) {
-                        repository.openMediaInStremioOrApp(profile.id, it)
+                    rvRecommendations.adapter = MediaPosterAdapter(items, posterScale, palette) { item ->
+                        handleMediaItemClick(item)
                     }
                     carouselItems = items.take(6)
                     currentCarouselIndex = 0
@@ -403,8 +417,8 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 if (items.isNotEmpty()) {
                     sectionTrending.visibility = View.VISIBLE
-                    rvTrending.adapter = MediaPosterAdapter(items, posterScale, palette) {
-                        repository.openMediaInStremioOrApp(profile.id, it)
+                    rvTrending.adapter = MediaPosterAdapter(items, posterScale, palette) { item ->
+                        handleMediaItemClick(item)
                     }
                 } else {
                     sectionTrending.visibility = View.GONE
