@@ -13,6 +13,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pillApps: TextView
     private lateinit var pillSettings: TextView
     private lateinit var tvClock: TextClock
+    private lateinit var mainScrollView: NestedScrollView
 
     private lateinit var sectionApps: LinearLayout
     private lateinit var sectionContinueWatching: LinearLayout
@@ -91,6 +93,7 @@ class MainActivity : AppCompatActivity() {
         pillApps = findViewById(R.id.pillApps)
         pillSettings = findViewById(R.id.pillSettings)
         tvClock = findViewById(R.id.tvClock)
+        mainScrollView = findViewById(R.id.mainScrollView)
 
         sectionApps = findViewById(R.id.sectionApps)
         sectionContinueWatching = findViewById(R.id.sectionContinueWatching)
@@ -122,9 +125,19 @@ class MainActivity : AppCompatActivity() {
         )
 
         setupHeaderAndBannerInteractions()
+        setupScrollListenerForBackdropFade()
         refreshLauncherUI()
 
         handler.postDelayed({ hideLoadingOverlaySmoothly() }, 1400)
+    }
+
+    private fun setupScrollListenerForBackdropFade() {
+        // Conforme o utilizador desce na tela, a imagem de fundo do banner desvanece suavemente para a cor de fundo
+        mainScrollView.setOnScrollChangeListener(NestedScrollView.OnScrollChangeListener { _, _, scrollY, _, _ ->
+            val maxScroll = UiUtils.dp(this, 220).toFloat()
+            val alpha = (1.0f - (scrollY / maxScroll)).coerceIn(0.0f, 1.0f)
+            heroBackdropImage.alpha = alpha * 0.85f
+        })
     }
 
     private fun drawMinimalLoadingSymbol() {

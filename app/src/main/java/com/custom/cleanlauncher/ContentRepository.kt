@@ -162,6 +162,7 @@ class ContentRepository(private val context: Context) {
                     val backdropPath = obj.optString("backdrop_path", "")
                     val poster = if (posterPath.isNotEmpty() && posterPath != "null") "https://image.tmdb.org/t/p/w500$posterPath" else ""
                     val backdrop = if (backdropPath.isNotEmpty() && backdropPath != "null") "https://image.tmdb.org/t/p/w1280$backdropPath" else poster
+                    val type = obj.optString("media_type", fallbackType)
                     if (title.isNotEmpty()) {
                         items.add(
                             MediaItem(
@@ -171,7 +172,7 @@ class ContentRepository(private val context: Context) {
                                 overview = obj.optString("overview", ""),
                                 posterUrl = poster,
                                 backdropUrl = backdrop,
-                                mediaType = obj.optString("media_type", fallbackType)
+                                mediaType = if (type.isEmpty()) fallbackType else type
                             )
                         )
                     }
@@ -213,6 +214,9 @@ class ContentRepository(private val context: Context) {
         return list
     }
 
+    /**
+     * Abre diretamente a página de detalhes do filme/série no Stremio sem passar pela busca interna.
+     */
     fun openMediaInStremioOrApp(profileId: String, item: MediaItem) {
         if (item.id > 0) {
             recordWatchedMediaForActiveProfile(profileId, item.id)
@@ -226,16 +230,26 @@ class ContentRepository(private val context: Context) {
             } catch (_: Exception) {}
         }
         try {
-            val encodedTitle = Uri.encode(item.title)
-            val stremioUri = Uri.parse("stremio:///search?search=$encodedTitle")
+            // Formato de intent direto para o Stremio abrir a página do TMDb/IMDb sem tela de busca
+            val typeStr = if (item.mediaType == "tv") "series" else "movie"
+            val stremioUri = Uri.parse("stremio:///detail/$typeStr/tmdb:${item.id}")
             val stremioIntent = Intent(Intent.ACTION_VIEW, stremioUri).apply {
                 setPackage("com.stremio.one")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(stremioIntent)
         } catch (_: Exception) {
-            val fallback = context.packageManager.getLeanbackLaunchIntentForPackage("com.stremio.one")
-            fallback?.let { context.startActivity(it) }
+            try {
+                // Fallback para URI genérica do Stremio
+                val fallbackUri = Uri.parse("stremio:///detail/movie/tmdb:${item.id}")
+                val fallbackIntent = Intent(Intent.ACTION_VIEW, fallbackUri).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallbackIntent)
+            } catch (_: Exception) {
+                val fallbackApp = context.packageManager.getLeanbackLaunchIntentForPackage("com.stremio.one")
+                fallbackApp?.let { context.startActivity(it) }
+            }
         }
     }
 }

@@ -1,12 +1,15 @@
 package com.custom.cleanlauncher
 
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.widget.*
 import androidx.recyclerview.widget.RecyclerView
 
@@ -25,7 +28,6 @@ class MediaPosterAdapter(
         val ctx = parent.context
         val w = (UiUtils.dp(ctx, 134) * scale).toInt()
         val h = (UiUtils.dp(ctx, 194) * scale).toInt()
-        val pad = UiUtils.dp(ctx, 2)
 
         val container = FrameLayout(ctx).apply {
             layoutParams = ViewGroup.MarginLayoutParams(w, h).apply {
@@ -33,8 +35,13 @@ class MediaPosterAdapter(
                 topMargin = UiUtils.dp(ctx, 8)
                 bottomMargin = UiUtils.dp(ctx, 8)
             }
-            setPadding(pad, pad, pad, pad)
+            // Força o recorte perfeito (clip) em qualquer versão do Android para a capa não vazar da borda
             clipToOutline = true
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, UiUtils.dpFloat(ctx, 12f))
+                }
+            }
         }
 
         val poster = ImageView(ctx).apply {
@@ -45,9 +52,7 @@ class MediaPosterAdapter(
         val bottomGradient = GradientDrawable(
             GradientDrawable.Orientation.BOTTOM_TOP,
             intArrayOf(Color.parseColor("#E6000000"), Color.parseColor("#80000000"), Color.TRANSPARENT)
-        ).apply {
-            cornerRadius = UiUtils.dpFloat(ctx, 12f)
-        }
+        )
 
         val label = TextView(ctx).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -76,7 +81,7 @@ class MediaPosterAdapter(
         UiUtils.attachSingleFocus(
             view = holder.container,
             palette = palette,
-            cornerRadiusDp = 14f,
+            cornerRadiusDp = 12f,
             scaleUp = 1.05f
         ) { hasFocus ->
             holder.label.setTextColor(if (hasFocus) Color.WHITE else Color.parseColor("#E2E8F0"))
@@ -87,7 +92,7 @@ class MediaPosterAdapter(
 
     override fun onViewRecycled(holder: VH) {
         super.onViewRecycled(holder)
-        UiUtils.resetFocusState(holder.container, palette, 14f)
+        UiUtils.resetFocusState(holder.container, palette, 12f)
     }
 
     override fun getItemCount() = items.size
@@ -117,6 +122,12 @@ class AppIconAdapter(
                 bottomMargin = UiUtils.dp(ctx, 6)
             }
             setPadding(UiUtils.dp(ctx, 10), UiUtils.dp(ctx, 8), UiUtils.dp(ctx, 10), UiUtils.dp(ctx, 8))
+            clipToOutline = true
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, UiUtils.dpFloat(ctx, 12f))
+                }
+            }
         }
 
         val icon = ImageView(ctx).apply {
@@ -151,7 +162,7 @@ class AppIconAdapter(
         UiUtils.attachSingleFocus(
             view = holder.container,
             palette = palette,
-            cornerRadiusDp = 14f,
+            cornerRadiusDp = 12f,
             scaleUp = 1.05f
         ) { hasFocus ->
             holder.title.setTextColor(if (hasFocus) palette.textPrimary else palette.textSecondary)
@@ -163,7 +174,7 @@ class AppIconAdapter(
 
     override fun onViewRecycled(holder: VH) {
         super.onViewRecycled(holder)
-        UiUtils.resetFocusState(holder.container, palette, 14f)
+        UiUtils.resetFocusState(holder.container, palette, 12f)
     }
 
     override fun getItemCount() = apps.size
