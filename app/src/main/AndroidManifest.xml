@@ -23,8 +23,7 @@
             android:stateNotNeeded="true"
             android:excludeFromRecents="true"
             android:screenOrientation="landscape">
-            
-            <!-- Filtro exclusivo para o sistema reconhecer como App de Início (Home) -->
+
             <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
@@ -32,7 +31,6 @@
                 <category android:name="android.intent.category.MONKEY" />
             </intent-filter>
 
-            <!-- Filtro exclusivo para Android TV / Google TV Leanback -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -41,7 +39,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Serviço para capturar o botão Home na Google TV -->
         <service
             android:name=".HomeKeyInterceptorService"
             android:exported="true"

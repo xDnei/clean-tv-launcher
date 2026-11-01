@@ -3,10 +3,19 @@ package com.custom.cleanlauncher
 import android.content.Context
 import android.content.Intent
 import android.database.Cursor
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.util.LruCache
+import android.widget.ImageView
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import kotlin.concurrent.thread
 
 data class MediaItem(
@@ -21,72 +30,153 @@ data class MediaItem(
     val sourcePackage: String? = null
 )
 
-class ContentRepository(private val context: Context) {
+object ImageLoader {
+    private val handler = Handler(Looper.getMainLooper())
+    private val memoryCache: LruCache<String, Bitmap> = object : LruCache<String, Bitmap>(
+        (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt().coerceAtLeast(4096)
+    ) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
+    }
 
+    fun load(url: String, imageView: ImageView, crossfade: Boolean = true) {
+        imageView.tag = url
+        if (url.isEmpty() || !url.startsWith("http")) {
+            imageView.setImageDrawable(null)
+            return
+        }
+
+        val cached = memoryCache.get(url)
+        if (cached != null) {
+            imageView.setImageBitmap(cached)
+            imageView.alpha = 1f
+            return
+        }
+
+        val appCtx = imageView.context.applicationContext
+        thread {
+            try {
+                val diskFile = File(appCtx.cacheDir, "img_" + hashKey(url))
+                val bmp = if (diskFile.exists()) {
+                    BitmapFactory.decodeFile(diskFile.absolutePath)
+                } else {
+                    val conn = URL(url).openConnection() as HttpURLConnection
+                    conn.connectTimeout = 6000
+                    conn.readTimeout = 6000
+                    val downloaded = BitmapFactory.decodeStream(conn.inputStream)
+                    if (downloaded != null) {
+                        FileOutputStream(diskFile).use { out ->
+                            downloaded.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        }
+                    }
+                    downloaded
+                }
+
+                if (bmp != null) {
+                    memoryCache.put(url, bmp)
+                    handler.post {
+                        if (imageView.tag == url) {
+                            if (crossfade) {
+                                imageView.alpha = 0.15f
+                                imageView.setImageBitmap(bmp)
+                                imageView.animate().alpha(1f).setDuration(240).start()
+                            } else {
+                                imageView.setImageBitmap(bmp)
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun hashKey(input: String): String {
+        return try {
+            val bytes = MessageDigest.getInstance("MD5").digest(input.toByteArray())
+            bytes.joinToString("") { "%02x".format(it) }
+        } catch (_: Exception) {
+            input.hashCode().toString()
+        }
+    }
+}
+
+class ContentRepository(private val context: Context) {
     private val prefs = context.getSharedPreferences("clean_launcher_prefs", Context.MODE_PRIVATE)
 
-    fun recordWatchedMediaForActiveProfile(profileId: String, tmdbMovieId: Int) {
-        prefs.edit().putInt("last_watched_tmdb_$profileId", tmdbMovieId).apply()
+    fun recordWatchedMediaForActiveProfile(profileId: String, movieId: Int) {
+        prefs.edit().putInt("last_watched_tmdb_$profileId", movieId).apply()
     }
 
-    fun fetchPersonalizedRecommendations(profile: UserProfile, callback: (List<MediaItem>) -> Unit) {
-        val apiKey = prefs.getString("tmdb_api_key", "") ?: ""
+    fun fetchPersonalizedRecommendations(
+        profile: UserProfile,
+        categoryFilter: String = "ALL",
+        callback: (List<MediaItem>) -> Unit
+    ) {
+        val apiKey = prefs.getString("tmdb_api_key", "")?.trim() ?: ""
         if (apiKey.isEmpty()) {
             callback(emptyList())
             return
         }
-        val lastWatchedId = prefs.getInt("last_watched_tmdb_${profile.id}", -1)
-        val usePersonalized = prefs.getBoolean("personalized_recs", true)
-
-        val endpoint = if (usePersonalized && lastWatchedId != -1) {
-            "https://api.themoviedb.org/3/movie/$lastWatchedId/recommendations?api_key=$apiKey&language=pt-BR"
-        } else {
-            "https://api.themoviedb.org/3/discover/movie?api_key=$apiKey&language=pt-BR&sort_by=popularity.desc&with_genres=${profile.favoriteGenres}"
+        val lastId = prefs.getInt("last_watched_tmdb_${profile.id}", -1)
+        val endpoint = when (categoryFilter) {
+            "MOVIES" -> "https://api.themoviedb.org/3/discover/movie?api_key=$apiKey&language=pt-BR&sort_by=popularity.desc&with_genres=${profile.favoriteGenres}"
+            "SERIES" -> "https://api.themoviedb.org/3/discover/tv?api_key=$apiKey&language=pt-BR&sort_by=popularity.desc"
+            else -> {
+                if (prefs.getBoolean("personalized_recs", true) && lastId != -1) {
+                    "https://api.themoviedb.org/3/movie/$lastId/recommendations?api_key=$apiKey&language=pt-BR"
+                } else {
+                    "https://api.themoviedb.org/3/discover/movie?api_key=$apiKey&language=pt-BR&sort_by=popularity.desc&with_genres=${profile.favoriteGenres}"
+                }
+            }
         }
-        fetchTmdbList(endpoint, callback)
+        val defaultType = if (categoryFilter == "SERIES") "tv" else "movie"
+        fetchTmdbList(endpoint, defaultType, callback)
     }
 
-    fun fetchTrending(callback: (List<MediaItem>) -> Unit) {
-        val apiKey = prefs.getString("tmdb_api_key", "") ?: ""
+    fun fetchTrending(categoryFilter: String = "ALL", callback: (List<MediaItem>) -> Unit) {
+        val apiKey = prefs.getString("tmdb_api_key", "")?.trim() ?: ""
         if (apiKey.isEmpty()) {
             callback(emptyList())
             return
         }
-        val endpoint = "https://api.themoviedb.org/3/trending/all/week?api_key=$apiKey&language=pt-BR"
-        fetchTmdbList(endpoint, callback)
+        val path = when (categoryFilter) {
+            "MOVIES" -> "trending/movie/week"
+            "SERIES" -> "trending/tv/week"
+            else -> "trending/all/week"
+        }
+        fetchTmdbList("https://api.themoviedb.org/3/$path?api_key=$apiKey&language=pt-BR", "movie", callback)
     }
 
-    private fun fetchTmdbList(urlStr: String, callback: (List<MediaItem>) -> Unit) {
+    private fun fetchTmdbList(urlStr: String, fallbackType: String, callback: (List<MediaItem>) -> Unit) {
         thread {
             val items = mutableListOf<MediaItem>()
             try {
                 val conn = URL(urlStr).openConnection() as HttpURLConnection
                 conn.connectTimeout = 6000
+                conn.readTimeout = 6000
                 val response = conn.inputStream.bufferedReader().readText()
                 val results = JSONObject(response).getJSONArray("results")
-
                 for (i in 0 until minOf(results.length(), 15)) {
                     val obj = results.getJSONObject(i)
                     val title = obj.optString("title").ifEmpty { obj.optString("name") }
-                    val poster = "https://image.tmdb.org/t/p/w500" + obj.optString("poster_path")
-                    val backdrop = "https://image.tmdb.org/t/p/w1280" + obj.optString("backdrop_path")
-                    val mediaType = obj.optString("media_type", "movie")
-
-                    items.add(
-                        MediaItem(
-                            id = obj.getInt("id"),
-                            imdbId = null,
-                            title = title,
-                            overview = obj.optString("overview"),
-                            posterUrl = poster,
-                            backdropUrl = backdrop,
-                            mediaType = mediaType
+                    val posterPath = obj.optString("poster_path", "")
+                    val backdropPath = obj.optString("backdrop_path", "")
+                    val poster = if (posterPath.isNotEmpty() && posterPath != "null") "https://image.tmdb.org/t/p/w500$posterPath" else ""
+                    val backdrop = if (backdropPath.isNotEmpty() && backdropPath != "null") "https://image.tmdb.org/t/p/w1280$backdropPath" else poster
+                    if (title.isNotEmpty()) {
+                        items.add(
+                            MediaItem(
+                                id = obj.optInt("id", 0),
+                                imdbId = null,
+                                title = title,
+                                overview = obj.optString("overview", ""),
+                                posterUrl = poster,
+                                backdropUrl = backdrop,
+                                mediaType = obj.optString("media_type", fallbackType)
+                            )
                         )
-                    )
+                    }
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            } catch (_: Exception) {}
             callback(items)
         }
     }
@@ -104,14 +194,15 @@ class ContentRepository(private val context: Context) {
                 val pkgIdx = it.getColumnIndex("package_name")
 
                 while (it.moveToNext()) {
+                    val poster = if (posterIdx >= 0) it.getString(posterIdx) ?: "" else ""
                     list.add(
                         MediaItem(
                             id = it.position,
                             imdbId = null,
                             title = if (titleIdx >= 0) it.getString(titleIdx) ?: "" else "",
                             overview = if (descIdx >= 0) it.getString(descIdx) ?: "" else "",
-                            posterUrl = if (posterIdx >= 0) it.getString(posterIdx) ?: "" else "",
-                            backdropUrl = if (posterIdx >= 0) it.getString(posterIdx) ?: "" else "",
+                            posterUrl = poster,
+                            backdropUrl = poster,
                             deepLinkUri = if (intentUriIdx >= 0) it.getString(intentUriIdx) else null,
                             sourcePackage = if (pkgIdx >= 0) it.getString(pkgIdx) else null
                         )
@@ -134,12 +225,13 @@ class ContentRepository(private val context: Context) {
                 return
             } catch (_: Exception) {}
         }
-        val stremioUri = Uri.parse("stremio:///search?search=${Uri.encode(item.title)}")
-        val stremioIntent = Intent(Intent.ACTION_VIEW, stremioUri).apply {
-            setPackage("com.stremio.one")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
         try {
+            val encodedTitle = Uri.encode(item.title)
+            val stremioUri = Uri.parse("stremio:///search?search=$encodedTitle")
+            val stremioIntent = Intent(Intent.ACTION_VIEW, stremioUri).apply {
+                setPackage("com.stremio.one")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             context.startActivity(stremioIntent)
         } catch (_: Exception) {
             val fallback = context.packageManager.getLeanbackLaunchIntentForPackage("com.stremio.one")

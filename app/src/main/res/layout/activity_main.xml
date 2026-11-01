@@ -5,15 +5,21 @@
     android:layout_height="match_parent"
     android:clipChildren="false"
     android:clipToPadding="false"
-    android:background="#08080A">
+    android:background="#090C12">
 
     <ImageView
-        android:id="@+id/wallpaperBackground"
+        android:id="@+id/heroBackdropImage"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="340dp"
+        android:layout_gravity="top"
         android:scaleType="centerCrop"
-        android:alpha="0.35"
-        android:visibility="gone"/>
+        android:alpha="0.85" />
+
+    <View
+        android:id="@+id/heroGradientScrim"
+        android:layout_width="match_parent"
+        android:layout_height="345dp"
+        android:layout_gravity="top" />
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/mainScrollView"
@@ -31,57 +37,144 @@
             android:orientation="vertical"
             android:paddingBottom="40dp">
 
-            <!-- Barra Superior e Hero Banner -->
-            <FrameLayout
-                android:id="@+id/heroContainer"
+            <LinearLayout
+                android:id="@+id/topNavBar"
                 android:layout_width="match_parent"
-                android:layout_height="260dp"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="38dp"
+                android:paddingEnd="38dp"
+                android:paddingTop="22dp"
+                android:paddingBottom="8dp"
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
-                <androidx.viewpager2.widget.ViewPager2
-                    android:id="@+id/heroViewPager"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
+                <ImageView
+                    android:id="@+id/btnProfileAvatar"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:focusable="true"
+                    android:clickable="true"
+                    android:scaleType="centerCrop" />
 
                 <LinearLayout
+                    android:id="@+id/navPillsContainer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="18dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
+
+                    <TextView
+                        android:id="@+id/pillForYou"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:gravity="center"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:layout_marginEnd="8dp"
+                        android:text="Para você"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/pillMovies"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:gravity="center"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:layout_marginEnd="8dp"
+                        android:text="Filmes"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/pillSeries"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:gravity="center"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:layout_marginEnd="8dp"
+                        android:text="Séries"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/pillApps"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:gravity="center"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:layout_marginEnd="8dp"
+                        android:text="Apps"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/pillSettings"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:gravity="center"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:text="Configurações"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <TextClock
+                    android:id="@+id/tvClock"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="top|start"
-                    android:layout_marginStart="42dp"
-                    android:layout_marginTop="28dp"
+                    android:format12Hour="HH:mm"
+                    android:format24Hour="HH:mm"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/heroBannerFocusArea"
+                android:layout_width="match_parent"
+                android:layout_height="175dp"
+                android:gravity="bottom|start"
+                android:orientation="vertical"
+                android:paddingStart="38dp"
+                android:paddingEnd="220dp"
+                android:paddingBottom="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <TextView
+                    android:id="@+id/heroTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Clean Launcher"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/heroOverview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="13sp"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+
+                <LinearLayout
+                    android:id="@+id/heroIndicatorsContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
                     android:gravity="center_vertical"
-                    android:clipChildren="false"
-                    android:clipToPadding="false"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal" />
+            </LinearLayout>
 
-                    <ImageButton
-                        android:id="@+id/btnProfileAvatar"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:background="@drawable/circle_avatar_selector"
-                        android:focusable="true"
-                        android:focusableInTouchMode="false"
-                        android:padding="10dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_default_avatar"/>
-
-                    <Button
-                        android:id="@+id/btnActivateHome"
-                        android:layout_width="wrap_content"
-                        android:layout_height="42dp"
-                        android:layout_marginStart="16dp"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
-                        android:text="Definir como Tela Inicial"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textAllCaps="false"
-                        android:focusable="true"/>
-                </LinearLayout>
-            </FrameLayout>
-
-            <!-- Aplicativos Instalados (Em destaque para acesso imediato) -->
             <LinearLayout
                 android:id="@+id/sectionApps"
                 android:layout_width="match_parent"
@@ -89,60 +182,27 @@
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:orientation="vertical"
-                android:paddingStart="42dp"
-                android:paddingEnd="42dp"
-                android:layout_marginTop="16dp">
+                android:paddingStart="38dp"
+                android:paddingEnd="38dp"
+                android:layout_marginTop="4dp">
 
                 <TextView
                     android:id="@+id/titleApps"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Aplicativos"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
+                    android:textSize="15sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="6dp"/>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvApps"
                     android:layout_width="match_parent"
-                    android:layout_height="135dp"
-                    android:clipChildren="false"
-                    android:clipToPadding="false"/>
-            </LinearLayout>
-
-            <!-- Continuar Assistindo -->
-            <LinearLayout
-                android:id="@+id/sectionContinueWatching"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clipChildren="false"
-                android:clipToPadding="false"
-                android:orientation="vertical"
-                android:paddingStart="42dp"
-                android:paddingEnd="42dp"
-                android:layout_marginTop="20dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/titleContinueWatching"
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Continuar Assistindo"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp"/>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvContinueWatching"
-                    android:layout_width="match_parent"
-                    android:layout_height="180dp"
                     android:clipChildren="false"
                     android:clipToPadding="false"/>
             </LinearLayout>
 
-            <!-- Recomendações TMDb -->
             <LinearLayout
                 android:id="@+id/sectionRecommendations"
                 android:layout_width="match_parent"
@@ -150,9 +210,9 @@
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:orientation="vertical"
-                android:paddingStart="42dp"
-                android:paddingEnd="42dp"
-                android:layout_marginTop="20dp"
+                android:paddingStart="38dp"
+                android:paddingEnd="38dp"
+                android:layout_marginTop="14dp"
                 android:visibility="gone">
 
                 <TextView
@@ -160,20 +220,47 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Recomendações"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
+                    android:textSize="15sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="6dp"/>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvRecommendations"
                     android:layout_width="match_parent"
-                    android:layout_height="210dp"
+                    android:layout_height="wrap_content"
                     android:clipChildren="false"
                     android:clipToPadding="false"/>
             </LinearLayout>
 
-            <!-- Em Alta -->
+            <LinearLayout
+                android:id="@+id/sectionContinueWatching"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:orientation="vertical"
+                android:paddingStart="38dp"
+                android:paddingEnd="38dp"
+                android:layout_marginTop="14dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/titleContinueWatching"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Continuar Assistindo"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="6dp"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvContinueWatching"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"/>
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/sectionTrending"
                 android:layout_width="match_parent"
@@ -181,9 +268,9 @@
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:orientation="vertical"
-                android:paddingStart="42dp"
-                android:paddingEnd="42dp"
-                android:layout_marginTop="20dp"
+                android:paddingStart="38dp"
+                android:paddingEnd="38dp"
+                android:layout_marginTop="14dp"
                 android:visibility="gone">
 
                 <TextView
@@ -191,19 +278,52 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Em Alta"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
+                    android:textSize="15sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="6dp"/>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvTrending"
                     android:layout_width="match_parent"
-                    android:layout_height="210dp"
+                    android:layout_height="wrap_content"
                     android:clipChildren="false"
                     android:clipToPadding="false"/>
             </LinearLayout>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:id="@+id/loadingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:background="#090C12"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:id="@+id/loadingSymbol"
+            android:layout_width="68dp"
+            android:layout_height="68dp" />
+
+        <ProgressBar
+            android:id="@+id/loadingProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="200dp"
+            android:layout_height="5dp"
+            android:layout_marginTop="24dp"
+            android:indeterminate="true" />
+
+        <TextView
+            android:id="@+id/loadingSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Carregando sua experiência..."
+            android:textColor="#94A3B8"
+            android:textSize="13sp" />
+    </LinearLayout>
+
 </FrameLayout>

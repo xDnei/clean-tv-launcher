@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Clean Launcher</string>
-    <string name="accessibility_desc">Permite que o Clean Launcher abra instantaneamente ao apertar o botão Home do controle remoto.</string>
+    <string name="accessibility_desc">Permite abrir o Clean Launcher ao pressionar o botão Home do comando.</string>
 </resources>
