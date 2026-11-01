@@ -131,7 +131,7 @@ class HeroBannerAdapter(
         }
         val btn = Button(ctx).apply {
             text = "Abrir"
-            textAllCaps = false
+            isAllCaps = false
             setTextColor(Color.WHITE)
             setPadding(UiUtils.dp(ctx, 20), UiUtils.dp(ctx, 8), UiUtils.dp(ctx, 20), UiUtils.dp(ctx, 8))
         }
