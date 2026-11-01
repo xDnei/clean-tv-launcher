@@ -73,7 +73,7 @@ object ThemeManager {
 object UiUtils {
     private val interpolator = DecelerateInterpolator()
     private var currentFocusedRef: WeakReference<View>? = null
-    private var currentResetAction: (() -> Unit)? = null
+    private var currentResetAction: (() -> Any?)? = null
 
     fun dp(ctx: Context, value: Int): Int {
         return TypedValue.applyDimension(
